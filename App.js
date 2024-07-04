@@ -11,7 +11,6 @@ App.use(
     })
 );
 
-
 const path = require(`path`);
 App.set(`views`, path.join(__dirname, `views`))
 App.set('view engine', 'ejs');
@@ -55,3 +54,6 @@ function Server_run() {
     }
 }
 Server_run();
+
+const register_router = require(`./router/register`);
+App.use(`/register`, require(register_router));
