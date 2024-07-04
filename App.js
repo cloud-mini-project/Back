@@ -1,5 +1,6 @@
 const Express = require(`express`);
 const App = Express();
+App.use(Express.static("public"));
 
 const session = require("express-session");
 App.use(
@@ -11,17 +12,18 @@ App.use(
 );
 
 const path = require(`path`);
-App.set(`views`, path.join(__dirname, `src/views`))
+App.set(`views`, path.join(__dirname, `views`))
 App.set('view engine', 'ejs');
-App.use(Express.static("public"));
 
 const fs = require(`fs`);
 
-const cookieParser = require("cookie-parser");
-App.use(cookieParser());
 
 const bodyParser = require(`body-parser`);
 App.use(bodyParser.urlencoded({ extended : true }));
+App.use(bodyParser.json());
+
+const cookieParser = require("cookie-parser");
+App.use(cookieParser());
 
 
 /** MySQL Connect */
@@ -38,14 +40,16 @@ function Server_run() {
         MySQL();
         App.listen(PORT, async() => {
             console.log(`Server runing http://${HOST}:${PORT}`);
-        })
+        });
         App.get(`/`, async(req, res) => {
             res.render(`index`)
-        })
+        });
     }
     catch (error) {
         console.error(`Server error`, error);
     }
 }
 Server_run();
-// App.use(`/`, require(`./router/?`));
+
+const register_router = require(`./router/register`);
+App.use(`/register`, require(register_router));
