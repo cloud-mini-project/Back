@@ -2,7 +2,14 @@
 
 ![Proof HTML](https://github.com/cloud-mini-project/demo-repository/actions/workflows/proof-html.yml/badge.svg)
 
-# Welcome to your organization's demo respository
-This code repository (or "repo") is designed to demonstrate the best GitHub has to offer with the least amount of noise.
+# Cloud Mini Project
+### Frontend
+---
+* React
 
-The repo includes an `index.html` file (so it can render a web page), two GitHub Actions workflows, and a CSS stylesheet dependency.
+
+### Backend
+---
+* Runfile : Node.js
+* Database : MySQL
+* Container + Iamge + Volume : Docker
