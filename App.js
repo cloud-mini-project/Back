@@ -1,12 +1,3 @@
-
-const express = require('express');
-const app = express();
-
-
-require(`dotenv`).config();
-const HOST = process.env.SERVER_HOST;
-const PORT = process.env.SERVER_PORT;
-
 const Express = require(`express`);
 const App = Express();
 App.use(Express.static("public"));
