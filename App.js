@@ -33,15 +33,18 @@ const HOST = process.env.SERVER_HOST;
 /** Server set port */
 const PORT = process.env.SERVER_PORT;
 
+const accountRouter = require('./router/account');
+
 function Server_run() {
     try {
         MySQL();
         App.listen(PORT, async() => {
             console.log(`Server runing http://${HOST}:${PORT}`);
-        })
+        });
         App.get(`/`, async(req, res) => {
             res.render(`index`)
-        })
+        });
+        App.use('/account', accountRouter);  // 계좌 관련 라우트 추가
     }
     catch (error) {
         console.error(`Server error`, error);
