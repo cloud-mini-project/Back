@@ -1,79 +1,337 @@
-const express = require(`express`);
+const express = require('express');
+const fs = require('fs');
+const multer = require('multer');
+const path = require('path');
+const uuid = require('uuid');
+
+const connectToDatabase = require('../DB');
+
 const router = express.Router();
 
-const connectToDatabase = require(`../DB`);
+// API 요청 미들웨어 추가
+router.use((req, res, next) => {
+    console.log('API Request:', req.method, req.originalUrl, req.body);
+    next();
+});
+
+const upload = multer({
+    storage: multer.diskStorage({
+        destination(req, file, done) {
+            done(null, `public/notice/${req.body.path}`);
+        },
+        filename(req, file, done) {
+            const ext = path.extname(file.originalname);
+            done(null, `${uuid.v4()}${ext}`);
+        }
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+
+// 폴더 생성
+router.post('/folder', (req, res) => {
+    try {
+        let newPath;
+        do {
+            newPath = uuid.v4();
+        } while (fs.existsSync(`public/notice/${newPath}`));
+
+        fs.mkdirSync(`public/notice/${newPath}`);
+
+        res.json({
+            status: 'success',
+            data: [
+                {
+                    path: newPath
+                }
+            ]
+        });
+
+    } catch (error) {
+        console.error('폴더 생성 에러', error);
+        res.status(500).send({
+            status: "fail",
+            message: 'Internal Server Error'
+        })
+    }
+});
+
+// 이미지 업로드
+router.post('/img', (req, res) => {
+    upload.single('img')(req, res, (err) => {
+        try {
+            if (err instanceof multer.MulterError) {
+                console.error('Multer 에러', err);
+                res.status(500).send({
+                    status: "fail",
+                    message: 'Internal Server Error'
+                });
+            } else {
+                let filename = req.file.filename;
+                console.log(filename);
+                res.json({
+                    status: 'success',
+                    data: null
+                });
+            }
+        } catch (error) {
+            console.error(`Upload Error`, error);
+            res.status(500).send({
+                status: "fail",
+                message: 'Internal Server Error'
+            });
+        }
+    });
+});
+
+// 파일 업로드
+router.post('/file', (req, res) => {
+    upload.single('file')(req, res, (err) => {
+        try {
+            if (err instanceof multer.MulterError) {
+                console.error('파일 업로드 에러', err);
+                res.status(500).send({
+                    status: "fail",
+                    message: 'Internal Server Error'
+                });
+            } else {
+                let filename = req.file.filename;
+                console.log(filename);
+                res.json({
+                    status: 'success',
+                    data: null
+                });
+            }
+        } catch (error) {
+            console.error('파일 업로드 에러', error);
+            res.status(500).send({
+                status: "fail",
+                message: 'Internal Server Error'
+            });
+        }
+    });
+});
 
 // 공지사항 작성
-router.post(`/`, async (req, res) => {
+router.post('/', async (req, res) => {
     try {
-        const { user_id, title, content, file, img } = req.body;
+        const { title, content, file, img } = req.body;
+
+        // TODO: 로그인 및 관리자 확인 처리 필요
+
         const db = await connectToDatabase();
-        const rows = await db.query(`INSERT INTO notice (user_id, title, content, file, img) VALUES (?, ?, ?, ?, ?)`, [user_id, title, content, file, img]);
-        res.json(rows);
+
+        // insert
+        db.query('INSERT INTO notice (user_id, title, content, file, img, created) VALUES (?, ?, ?, ?, ?, ?)', [0, title, content, file, img, new Date()], (err, result) => {
+            if (err) {
+                console.error('DB 에러', err);
+                res.status(500).send({
+                    status: "fail",
+                    message: 'Internal Server Error'
+                });
+            } else {
+                res.json({
+                    status: 'success',
+                    data: [
+                        {
+                            notice_id: result.insertId
+                        }
+                    ]
+                });
+            }
+        });
     } catch (error) {
-        console.error(`Notice Error`, error);
+        console.error('공지사항 작성 에러', error);
         res.status(500).send({
-            message: `Internal Server Error`
+            status: "fail",
+            message: 'Internal Server Error'
         })
     }
 });
 
 // 공지사항 목록
+// TODO : 페이징 적용
 router.get(`/`, async (req, res) => {
     try {
         const db = await connectToDatabase();
-        const rows = await db.query(`SELECT user.id, member_id, name, email, role, title, content, created, file, img FROM notice, user WHERE notice.user_id = user.id ORDER BY notice_id DESC`);
-        res.json(rows);
+        db.query('SELECT user.id user_id, notice.id notice_id, name, email, role, title, content, created, file, img FROM notice, user WHERE notice.user_id = user.id ORDER BY notice.created DESC', (err, rows) => {
+            if (err) {
+                console.error('DB 에러', err);
+                res.status(500).send({
+                    status: "fail",
+                    message: 'Internal Server Error'
+                });
+            } else {
+                res.json({
+                    status: 'success',
+                    data: rows
+                });
+            }
+        });
     } catch (error) {
-        console.error(`Notice Error`, error);
+        console.error('공지사항 목록 에러', error);
         res.status(500).send({
-            message: `Internal Server Error`
+            status: "fail",
+            message: 'Internal Server Error'
         })
     }
 });
 
 // 공지사항 상세
-router.get(`/:notice_id`, async (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
-        const { notice_id } = req.params;
+        const { id } = req.params;
         const db = await connectToDatabase();
-        const rows = await db.query(`SELECT user.id, member_id, name, email, role, title, content, created, file, img FROM notice, user WHERE notice.user_id = user.id AND notice_id = ?`, [notice_id]);
-        res.json(rows);
+        db.query('SELECT user.id user_id, notice.id notice_id, name, email, role, title, content, created, file, img FROM notice, user WHERE notice.user_id = user.id AND notice.id = ?', [id], (err, rows) => {
+            if (err) {
+                console.error('DB 에러', err);
+                res.status(500).send({
+                    status: "fail",
+                    message: 'Internal Server Error'
+                });
+            } else {
+                // 개수 확인
+                if (rows.length === 0) {
+                    res.status(404).send({
+                        status: "fail",
+                        message: '해당 공지사항이 존재하지 않습니다.'
+                    });
+                    return;
+                }
+                res.json({
+                    status: 'success',
+                    data: rows[0]
+                });
+            }
+        });
     } catch (error) {
-        console.error(`Notice Error`, error);
+        console.error('공지사항 상세 에러', error);
         res.status(500).send({
-            message: `Internal Server Error`
+            status: "fail",
+            message: 'Internal Server Error'
         })
     }
 });
 
 // 공지사항 수정
-router.put(`/:notice_id`, async (req, res) => {
+router.patch('/:id', async (req, res) => {
     try {
-        const { notice_id } = req.params;
-        const { title, content, file, img } = req.body;
+        const { id } = req.params;
+        const { title, content } = req.body;
         const db = await connectToDatabase();
-        const rows = await db.query(`UPDATE notice SET title = ?, content = ?, file = ?, img = ? WHERE notice_id = ?`, [title, content, file, img, notice_id]);
-        res.json(rows);
+        // 존재 확인
+        db.query('SELECT id FROM notice WHERE id = ?', [id], (err, rows) => {
+            if (err) {
+                console.error('DB 에러', err);
+                res.status(500).send({
+                    status: "fail",
+                    message: 'Internal Server Error'
+                });
+                return;
+            }
+
+            if (rows.length === 0) {
+                res.status(404).send({
+                    status: "fail",
+                    message: '해당 공지사항이 존재하지 않습니다.'
+                });
+                return;
+            }
+
+            let sql = 'UPDATE notice SET ';
+            let params = [];
+            if (title) {
+                sql += 'title = ?, ';
+                params.push(title);
+            }
+
+            if (content) {
+                sql += 'content = ?, ';
+                params.push(content);
+            }
+
+            sql = sql.slice(0, -2);
+            sql += ' WHERE id = ?';
+            params.push(id);
+
+            db.query(sql, params, (err, result) => {
+                if (err) {
+                    console.error('DB 에러', err);
+                    res.status(500).send({
+                        status: "fail",
+                        message: 'Internal Server Error'
+                    });
+                } else {
+
+                    res.json({
+                        status: 'success',
+                        data: null
+                    });
+                }
+            });
+        });
+
+
+
+
     } catch (error) {
-        console.error(`Notice Error`, error);
+        console.error('공지사항 수정 에러', error);
         res.status(500).send({
-            message: `Internal Server Error`
+            status: "fail",
+            message: 'Internal Server Error'
         })
     }
 });
 
 // 공지사항 삭제
-router.delete(`/:notice_id`, async (req, res) => {
+router.delete('/:id', async (req, res) => {
     try {
-        const { notice_id } = req.params;
+        const { id } = req.params;
         const db = await connectToDatabase();
-        const rows = await db.query(`DELETE FROM notice WHERE notice_id = ?`, [notice_id]);
-        res.json(rows);
+
+        // 존재 확인
+        db.query('SELECT id FROM notice WHERE id = ?', [id], (err, rows) => {
+            if (err) {
+                console.error('DB 에러', err);
+                res.status(500).send({
+                    status: "fail",
+                    message: 'Internal Server Error'
+                });
+                return;
+            }
+
+            if (rows.length === 0) {
+                res.status(404).send({
+                    status: "fail",
+                    message: '해당 공지사항이 존재하지 않습니다.'
+                });
+                return;
+            }
+
+            db.query('DELETE FROM notice WHERE id = ?', [id], (err, result) => {
+                if (err) {
+                    console.error('DB 에러', err);
+                    res.status(500).send({
+                        status: "fail",
+                        message: 'Internal Server Error'
+                    });
+                    return;
+                }
+
+                res.json({
+                    status: 'success',
+                    data: null
+                });
+
+            });
+        });
+
+
     } catch (error) {
-        console.error(`Notice Error`, error);
+        console.error('공지사항 삭제 에러', error);
         res.status(500).send({
-            message: `Internal Server Error`
+            status: "fail",
+            message: 'Internal Server Error'
         })
     }
 });
