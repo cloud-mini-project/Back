@@ -17,8 +17,6 @@ router.post('/save', async (req, res) => {
     } = req.body;
 
     try {
-        document.addEventListener()
-        
         const DB = await Database();
         const Encrypto = sha256(password + 'salt');
         
