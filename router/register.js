@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const Database = require('../DB');
+const { Database } = require('../DB');
 const sha256 = require('sha256');
 
 router.get('/register', (req, res) => {
