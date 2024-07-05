@@ -6,7 +6,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
 const accountRouter = require('./router/account'); // 이 부분이 중요합니다.
-const registerRouter = require('./router/register');
+const noticeRouter = require('./router/notice');
 const DB_connect = require('./DB');
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -25,7 +25,7 @@ const HOST = process.env.SERVER_HOST;
 const PORT = process.env.SERVER_PORT;
 
 app.use('/api/accounts', accountRouter);
-app.use('/api', registerRouter);
+app.use('/api/notice', noticeRouter);
 
 DB_connect().then(() => {
     app.listen(PORT, () => {

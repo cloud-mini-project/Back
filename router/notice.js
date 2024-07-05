@@ -14,6 +14,15 @@ router.use((req, res, next) => {
     next();
 });
 
+// 기본 폴더 생성 public이랑 notice 모두
+if (!fs.existsSync('public')) {
+    fs.mkdirSync('public');
+}
+
+if (!fs.existsSync('public/notice')) {
+    fs.mkdirSync('public/notice');
+}
+
 const upload = multer({
     storage: multer.diskStorage({
         destination(req, file, done) {
