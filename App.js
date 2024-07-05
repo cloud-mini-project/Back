@@ -1,36 +1,59 @@
-const express = require('express');
-const app = express();
-const session = require('express-session');
-const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser');
-const path = require('path');
-require('dotenv').config();
-const accountRouter = require('./router/account'); // 이 부분이 중요합니다.
-const registerRouter = require('./router/register');
-const DB_connect = require('./DB');
+const Express = require(`express`);
+const App = Express();
+App.use(Express.static("public"));
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-app.use(cookieParser());
-app.use(session({
-    secret: '암호화키',
-    resave: false,
-    saveUninitialized: false,
-}));
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
-app.use(express.static(path.join(__dirname, '../Front/public')));
+const session = require("express-session");
+App.use(
+    session({
+        secret: "암호화키",
+        resave: false,
+        saveUninitialized: false,
+    })
+);
 
+const path = require(`path`);
+App.set(`views`, path.join(__dirname, `views`))
+App.set('view engine', 'ejs');
+
+const fs = require(`fs`);
+
+
+const bodyParser = require(`body-parser`);
+App.use(bodyParser.urlencoded({ extended : true }));
+App.use(bodyParser.json());
+
+const cookieParser = require("cookie-parser");
+App.use(cookieParser());
+
+
+/** MySQL Connect */
+const MySQL = require(`./DB`);
+
+require(`dotenv`).config();
+/** Server set host */
 const HOST = process.env.SERVER_HOST;
+/** Server set port */
 const PORT = process.env.SERVER_PORT;
 
-app.use('/api/accounts', accountRouter);
-app.use('/api', registerRouter);
+const accountRouter = require('./router/account');
 
-DB_connect().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server running at http://${HOST}:${PORT}`);
-    });
-}).catch((err) => {
-    console.error('DB connection failed:', err);
-});
+function Server_run() {
+    try {
+        MySQL();
+        App.listen(PORT, async() => {
+            console.log(`Server runing http://${HOST}:${PORT}`);
+        });
+        App.get(`/`, async(req, res) => {
+            res.render(`index`)
+        });
+
+        App.use('/account', accountRouter);  // 계좌 관련 라우트 추가
+    }
+    catch (error) {
+        console.error(`Server error`, error);
+    }
+}
+Server_run();
+
+const register_router = require(`./router/register`);
+App.use(`/register`, require(register_router));
