@@ -1,11 +1,11 @@
-const MySQL = require('mysql2');
-require('dotenv').config();
+const MySQL = require(`mysql2`);
+require(`dotenv`).config();
 
 let MySQLDB;
 const DB_connect = async () => {
     if (MySQLDB) {
         return MySQLDB;
-    };
+    }
 
     try {
         const MySQL_HOST = process.env.MYSQL_HOST;
@@ -20,12 +20,18 @@ const DB_connect = async () => {
             database: MYSQL_DATABASE
         });
 
-        MySQLDB.connect();
-        console.log('MySQL connect success');
+        MySQLDB.connect(err => {
+            if (err) {
+                console.error('DB 연결 오류:', err);
+                throw err;
+            }
+            console.log(`MySQL 연결 성공`);
+        });
         return MySQLDB;
     }
     catch (error) {
-        console.error('Connect Error', error);
+        console.error(`연결 오류`, error);
+        throw error;
     }
 };
 

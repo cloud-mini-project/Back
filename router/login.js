@@ -18,6 +18,7 @@ router.post('/login', async (req, res) => {
             if (results.length > 0) {
                 const user = results[0];
                 req.session.user = user; // 세션에 사용자 정보 저장
+                console.log(user);
                 res.json({ success: true, user });
             } else {
                 res.json({ success: false, message: '로그인 실패: 잘못된 아이디 또는 비밀번호' });

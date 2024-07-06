@@ -1,9 +1,9 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
+const cors = require('cors');  // CORS 미들웨어 추가
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
-const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
@@ -15,11 +15,7 @@ const DB_connect = require('./DB');
 const HOST = process.env.SERVER_HOST || '127.0.0.1';
 const PORT = process.env.SERVER_PORT || 8080;
 
-app.use(cors({
-    origin: 'http://127.0.0.1:3000', // 프론트엔드 주소
-    credentials: true
-}));
-
+app.use(cors());  // CORS 미들웨어 사용
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -37,7 +33,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../Front/public', 'index.html'));
 });
 
-app.use('/api/accounts', accountRouter);
+app.use('/api/account', accountRouter);
 app.use('/api', registerRouter);
 app.use('/auth', loginRouter);
 
