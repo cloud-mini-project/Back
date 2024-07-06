@@ -1,8 +1,8 @@
-const MySQL = require(`mysql2`);
-require(`dotenv`).config();
+const MySQL = require('mysql2');
+require('dotenv').config();
 
 let MySQLDB;
-const DB_connect = async() => {
+const DB_connect = async () => {
     if (MySQLDB) {
         return MySQLDB;
     };
@@ -21,11 +21,11 @@ const DB_connect = async() => {
         });
 
         MySQLDB.connect();
-        console.log(`MySQL connect success`);
-        return { MySQLDB };
+        console.log('MySQL connect success');
+        return MySQLDB;
     }
     catch (error) {
-        console.error(`Connect Error`, error);
+        console.error('Connect Error', error);
     }
 };
 
