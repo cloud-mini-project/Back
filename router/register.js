@@ -3,10 +3,6 @@ const path = require('path');
 const Database = require('../DB');
 const sha256 = require('sha256');
 
-router.get(`/register`, async(req, res) => {
-    res.sendFile(path.join(__dirname, `register.html`));
-})
-
 router.post('/register/save', async (req, res) => {
     const { email, name, password, role, phone_num, address } = req.body;
     const salt = 'your_secret_salt';
@@ -26,17 +22,13 @@ router.post('/register/save', async (req, res) => {
         const values = [email, name, crypto_password, role, phone_num, address];
 
         await db.execute(query, values);
-        res.status(201).sendFile(__dirname, `public`, `index.html`)
+        res.status(201).json({ message: 'Register successful' });
 
     }
     catch (err) {
         console.error('DB Connect fail', err);
         res.status(500).json({ error: 'Server error' });
     }
-});
-
-router.get(`/login`, async(req, res) => {
-    res.sendFile(path.join(__dirname, `login.html`));
 });
 
 router.post('/login/submit', async (req, res) => {
