@@ -19,7 +19,8 @@ app.use(session({
 }));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
-app.use(express.static(path.join(__dirname, '../Front/public')));
+
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 const HOST = process.env.SERVER_HOST;
 const PORT = process.env.SERVER_PORT;

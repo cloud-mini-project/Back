@@ -1,10 +1,24 @@
+const MySQL = require('mysql2/promise');
+require(`dotenv`).config();
+
 const express = require('express');
 const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
 const uuid = require('uuid');
 
-const connectToDatabase = require('../DB');
+let db;
+const connectToDatabase = async () => {
+    if (db) return db;
+    db = await MySQL.createConnection({
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_DATABASE,
+    });
+    console.log(`MySQL connect success`);
+    return db
+};
 
 const router = express.Router();
 
@@ -23,138 +37,74 @@ if (!fs.existsSync('public/notice')) {
     fs.mkdirSync('public/notice');
 }
 
+// 파일 업로드 전 공통 미들웨어
+const setUpFolder = (req, res, next) => {
+    const temp = uuid.v4();
+    const folder = `public/notice/${temp}`;
+    console.log('folder:', folder);
+    req.folder = folder;
+    next();
+};
+
+// 위에 setupFolder 미들웨어를 대체하여 multer에서 처리
+
 const upload = multer({
     storage: multer.diskStorage({
         destination(req, file, done) {
-            done(null, `public/notice/${req.body.path}`);
+
+            if (!fs.existsSync(req.folder)) {
+                fs.mkdirSync(req.folder);
+            }
+
+            const folder = `${req.folder}/${file.fieldname}`;
+            if (!fs.existsSync(folder)) {
+                fs.mkdirSync(folder);
+            }
+
+            done(null, folder);
         },
         filename(req, file, done) {
-            const ext = path.extname(file.originalname);
-            done(null, `${uuid.v4()}${ext}`);
-        }
-    }),
-    limits: { fileSize: 5 * 1024 * 1024 }
-});
-
-
-// 폴더 생성
-router.post('/folder', (req, res) => {
-    try {
-        let newPath;
-        do {
-            newPath = uuid.v4();
-        } while (fs.existsSync(`public/notice/${newPath}`));
-
-        fs.mkdirSync(`public/notice/${newPath}`);
-
-        res.json({
-            status: 'success',
-            data: [
-                {
-                    path: newPath
-                }
-            ]
-        });
-
-    } catch (error) {
-        console.error('폴더 생성 에러', error);
-        res.status(500).send({
-            status: "fail",
-            message: 'Internal Server Error'
-        })
-    }
-});
-
-// 이미지 업로드
-router.post('/img', (req, res) => {
-    upload.single('img')(req, res, (err) => {
-        try {
-            if (err instanceof multer.MulterError) {
-                console.error('Multer 에러', err);
-                res.status(500).send({
-                    status: "fail",
-                    message: 'Internal Server Error'
-                });
+            const ext = path.extname(file.originalname); // 확장자 추출
+            // 이미지 필드이름일 경우에만 uuid 사용
+            if (file.fieldname === 'imgs') {
+                done(null, `${uuid.v4()}${ext}`);
             } else {
-                let filename = req.file.filename;
-                console.log(filename);
-                res.json({
-                    status: 'success',
-                    data: null
-                });
+                file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8')
+                done(null, file.originalname);
             }
-        } catch (error) {
-            console.error(`Upload Error`, error);
-            res.status(500).send({
-                status: "fail",
-                message: 'Internal Server Error'
-            });
-        }
-    });
+        },
+        limits: { fileSize: 5 * 1024 * 1024 } // 5MB 제한
+    })
 });
 
-// 파일 업로드
-router.post('/file', (req, res) => {
-    upload.single('file')(req, res, (err) => {
-        try {
-            if (err instanceof multer.MulterError) {
-                console.error('파일 업로드 에러', err);
-                res.status(500).send({
-                    status: "fail",
-                    message: 'Internal Server Error'
-                });
-            } else {
-                let filename = req.file.filename;
-                console.log(filename);
-                res.json({
-                    status: 'success',
-                    data: null
-                });
-            }
-        } catch (error) {
-            console.error('파일 업로드 에러', error);
-            res.status(500).send({
-                status: "fail",
-                message: 'Internal Server Error'
-            });
-        }
-    });
-});
+
 
 // 공지사항 작성
-router.post('/', async (req, res) => {
+router.post('/', setUpFolder, upload.fields([
+    { name: 'imgs', maxCount: 5 },
+    { name: 'files', maxCount: 5 }]
+), async (req, res) => {
+    const { title, content } = req.body;
+    console.log(title, content);
     try {
-        const { title, content, file, img } = req.body;
-
-        // TODO: 로그인 및 관리자 확인 처리 필요
 
         const db = await connectToDatabase();
 
-        // insert
-        db.query('INSERT INTO notice (user_id, title, content, file, img, created) VALUES (?, ?, ?, ?, ?, ?)', [0, title, content, file, img, new Date()], (err, result) => {
-            if (err) {
-                console.error('DB 에러', err);
-                res.status(500).send({
-                    status: "fail",
-                    message: 'Internal Server Error'
-                });
-            } else {
-                res.json({
-                    status: 'success',
-                    data: [
-                        {
-                            notice_id: result.insertId
-                        }
-                    ]
-                });
-            }
+        const params = [0, title, content, req.folder, req.folder, new Date()];
+        console.log(params);
+        await db.execute('INSERT INTO notice (user_id, title, content, file, img, created) VALUES (?, ?, ?, ?, ?, ?)', params);
+
+        res.json({
+            status: 'success',
+            message: '공지사항 추가 완료',
+            data: null
         });
     } catch (error) {
         console.error('공지사항 작성 에러', error);
         res.status(500).send({
-            status: "fail",
-            message: 'Internal Server Error'
-        })
+            status: 'fail',
+            message: '서버 에러'
+        });
     }
 });
 
@@ -163,25 +113,19 @@ router.post('/', async (req, res) => {
 router.get(`/`, async (req, res) => {
     try {
         const db = await connectToDatabase();
-        db.query('SELECT user.id user_id, notice.id notice_id, name, email, role, title, content, created, file, img FROM notice, user WHERE notice.user_id = user.id ORDER BY notice.created DESC', (err, rows) => {
-            if (err) {
-                console.error('DB 에러', err);
-                res.status(500).send({
-                    status: "fail",
-                    message: 'Internal Server Error'
-                });
-            } else {
-                res.json({
-                    status: 'success',
-                    data: rows
-                });
-            }
+
+        const [results, fields] = await db.query('SELECT user.id user_id, notice.id notice_id, name, email, role, title, content, created, file, img FROM notice, user WHERE notice.user_id = user.id ORDER BY notice.created DESC');
+        // console.log(results);
+        res.json({
+            status: 'success',
+            message: '공지사항 목록 조회 성공',
+            data: results
         });
     } catch (error) {
         console.error('공지사항 목록 에러', error);
         res.status(500).send({
             status: "fail",
-            message: 'Internal Server Error'
+            message: '서버 에러'
         })
     }
 });
@@ -191,33 +135,37 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const db = await connectToDatabase();
-        db.query('SELECT user.id user_id, notice.id notice_id, name, email, role, title, content, created, file, img FROM notice, user WHERE notice.user_id = user.id AND notice.id = ?', [id], (err, rows) => {
-            if (err) {
-                console.error('DB 에러', err);
-                res.status(500).send({
-                    status: "fail",
-                    message: 'Internal Server Error'
-                });
-            } else {
-                // 개수 확인
-                if (rows.length === 0) {
-                    res.status(404).send({
-                        status: "fail",
-                        message: '해당 공지사항이 존재하지 않습니다.'
-                    });
-                    return;
-                }
-                res.json({
-                    status: 'success',
-                    data: rows[0]
-                });
-            }
+
+
+
+        const [results, fields] = await db.query('SELECT user.id user_id, notice.id notice_id, name, email, role, title, content, created, file, img FROM notice, user WHERE notice.user_id = user.id AND notice.id = ?', [id]);
+        if (results.length === 0) {
+            res.status(404).send({
+                status: 'fail',
+                message: '해당 공지사항이 존재하지 않습니다.'
+            });
+            return;
+        }
+
+
+        const imgFolder = results[0].img;
+        const imgFiles = fs.readdirSync(`${imgFolder}/imgs`);
+        results[0].imgFiles = imgFiles.map((file) => `${imgFolder}/imgs/${file}`);
+
+        const fileFolder = results[0].file;
+        const files = fs.readdirSync(`${fileFolder}/files`);
+        results[0].files = files.map((file) => `${fileFolder}/files/${file}`);
+
+        res.json({
+            status: 'success',
+            message: '공지사항 상세 조회 성공',
+            data: results[0]
         });
     } catch (error) {
         console.error('공지사항 상세 에러', error);
         res.status(500).send({
             status: "fail",
-            message: 'Internal Server Error'
+            message: '서버 에러'
         })
     }
 });
@@ -344,5 +292,6 @@ router.delete('/:id', async (req, res) => {
         })
     }
 });
+
 
 module.exports = router;
