@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const path = require('path');
-const Database = require('../DB');
+const connect = require('../db');
 const sha256 = require('sha256');
 
 router.post('/register/save', async (req, res) => {
@@ -9,7 +9,7 @@ router.post('/register/save', async (req, res) => {
     const crypto_password = sha256(password + salt);
 
     try {
-        const { db } = await Database();
+        const { db } = await connect();
         const query = `
         INSERT INTO user (
             email,
@@ -37,7 +37,7 @@ router.post('/login/submit', async (req, res) => {
     const crypto_password = sha256(password + salt);
 
     try {
-        const { db } = await Database();
+        const { db } = await connect();
         const query = 'SELECT * FROM user WHERE email = ? AND password = ?';
         const [rows] = await db.execute(query, [email, crypto_password]);
 
@@ -50,6 +50,34 @@ router.post('/login/submit', async (req, res) => {
     catch (err) {
         console.error('DB Connect fail', err);
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+router.post('/login', async (req, res) => {
+    const { auth_id, password } = req.body;
+
+    try {
+        const MySQLDB = await connect();
+        const query = `SELECT * FROM user WHERE email = ? AND password = ?`;
+        const values = [auth_id, password];
+
+        MySQLDB.query(query, values, (err, results) => {
+            if (err) {
+                console.error('로그인 오류:', err);
+                return res.status(500).json({ success: false, message: '서버 오류' });
+            }
+            if (results.length > 0) {
+                const user = results[0];
+                req.session.user = user; // 세션에 사용자 정보 저장
+                console.log(user);
+                res.json({ success: true, user });
+            } else {
+                res.json({ success: false, message: '로그인 실패: 잘못된 아이디 또는 비밀번호' });
+            }
+        });
+    } catch (err) {
+        console.error('DB 접속 실패:', err);
+        res.status(500).json({ success: false, message: '서버 오류' });
     }
 });
 
