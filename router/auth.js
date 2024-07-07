@@ -3,33 +3,36 @@ const path = require('path');
 const connect = require('../db');
 const sha256 = require('sha256');
 
+const bodyParser = require('body-parser');
+router.use(bodyParser.json());
+router.use(bodyParser.urlencoded({ extended: true }));
+
 router.post('/register/save', async (req, res) => {
     const { email, name, password, role, phone_num, address } = req.body;
     const salt = 'your_secret_salt';
     const crypto_password = sha256(password + salt);
 
     try {
-        const { db } = await connect();
-        const query = `
-        INSERT INTO user (
-            email,
-            name,
-            password,
-            role,
-            phone_num,
-            address
-        ) VALUES (?, ?, ?, ?, ?, ?)`;
+        const db = await connect();
+        const query = `INSERT INTO user (email, name, password, role, phone_num, address) VALUES (?, ?, ?, ?, ?, ?)`;
         const values = [email, name, crypto_password, role, phone_num, address];
 
-        await db.execute(query, values);
-        res.status(201).json({ message: 'Register successful' });
-
+        db.query(query, values,(err, result) => {
+            if (err) {
+                console.log(err);
+                res.status(500).json({ error: 'Server error' });
+            }
+            else {
+                res.status(201).json({ message: 'Register successful' });
+            }
+        });
     }
     catch (err) {
         console.error('DB Connect fail', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 router.post('/login/submit', async (req, res) => {
     const { email, password } = req.body;
@@ -42,7 +45,7 @@ router.post('/login/submit', async (req, res) => {
         const [rows] = await db.execute(query, [email, crypto_password]);
 
         if (rows.length > 0) {
-            res.status(200).json({ message: 'Login successful' });
+            res.status(200).json({ success : true });
         } else {
             res.status(401).json({ error: 'Invalid email or password' });
         }
@@ -66,16 +69,19 @@ router.post('/login', async (req, res) => {
                 console.error('로그인 오류:', err);
                 return res.status(500).json({ success: false, message: '서버 오류' });
             }
+
             if (results.length > 0) {
                 const user = results[0];
                 req.session.user = user; // 세션에 사용자 정보 저장
                 console.log(user);
                 res.json({ success: true, user });
-            } else {
+            }
+            else {
                 res.json({ success: false, message: '로그인 실패: 잘못된 아이디 또는 비밀번호' });
             }
         });
-    } catch (err) {
+    }
+    catch (err) {
         console.error('DB 접속 실패:', err);
         res.status(500).json({ success: false, message: '서버 오류' });
     }
