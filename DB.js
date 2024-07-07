@@ -1,33 +1,27 @@
-const MySQL = require(`mysql2`);
+const mysql = require(`mysql2`);
 require(`dotenv`).config();
 
-let MySQLDB;
-const DB_connect = async () => {
-    if (MySQLDB) {
-        return MySQLDB;
-    }
+let db;
+const connect = async () => {
+    if (db) return db;
 
     try {
-        const MySQL_HOST = process.env.MYSQL_HOST;
-        const MYSQL_USER = process.env.MYSQL_USER;
-        const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD;
-        const MYSQL_DATABASE = process.env.MYSQL_DATABASE;
-
-        MySQLDB = MySQL.createConnection({
-            host: MySQL_HOST,
-            user: MYSQL_USER,
-            password: MYSQL_PASSWORD,
-            database: MYSQL_DATABASE
+        db = mysql.createConnection({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
         });
 
-        MySQLDB.connect(err => {
+        // 명시적으로 연결을 시도
+        db.connect(err => {
             if (err) {
                 console.error('DB 연결 오류:', err);
                 throw err;
             }
             console.log(`MySQL 연결 성공`);
         });
-        return MySQLDB;
+        return db;
     }
     catch (error) {
         console.error(`연결 오류`, error);
@@ -35,4 +29,4 @@ const DB_connect = async () => {
     }
 };
 
-module.exports = DB_connect;
+module.exports = connect;
