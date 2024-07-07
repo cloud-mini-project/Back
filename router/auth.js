@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const path = require('path');
-const Database = require('../db');
+const connect = require('../db');
 const sha256 = require('sha256');
 
 router.post('/register/save', async (req, res) => {
@@ -9,7 +9,7 @@ router.post('/register/save', async (req, res) => {
     const crypto_password = sha256(password + salt);
 
     try {
-        const { db } = await Database();
+        const { db } = await connect();
         const query = `
         INSERT INTO user (
             email,
@@ -37,7 +37,7 @@ router.post('/login/submit', async (req, res) => {
     const crypto_password = sha256(password + salt);
 
     try {
-        const { db } = await Database();
+        const { db } = await connect();
         const query = 'SELECT * FROM user WHERE email = ? AND password = ?';
         const [rows] = await db.execute(query, [email, crypto_password]);
 
@@ -57,7 +57,7 @@ router.post('/login', async (req, res) => {
     const { auth_id, password } = req.body;
 
     try {
-        const MySQLDB = await DB_connect();
+        const MySQLDB = await connect();
         const query = `SELECT * FROM user WHERE email = ? AND password = ?`;
         const values = [auth_id, password];
 

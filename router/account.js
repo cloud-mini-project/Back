@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const DB_connect = require('../db');
+const connect = require('../db');
 const crypto = require('crypto');
 
 // 계좌 번호와 비밀번호 암호화 함수
@@ -20,11 +20,11 @@ router.get('/user', async (req, res) => {
     }
 
     try {
-        const mysqldb = await DB_connect();
+        const mysqldb = await connect();
         const query = `SELECT name FROM user WHERE id = ?`;
         const values = [user_id];
 
-        mysqldb.MySQLDB.query(query, values, (err, results) => {
+        mysqldb.query(query, values, (err, results) => {
             if (err) {
                 console.error('사용자 조회 오류:', err);
                 return res.status(500).json({ error: '사용자 조회에 실패했습니다.' });
@@ -49,7 +49,7 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const mysqldb = await DB_connect();
+        const mysqldb = await connect();
         const query = `SELECT * FROM account WHERE user_id = ?`;
         const values = [user_id];
 
@@ -76,7 +76,7 @@ router.post('/create', async (req, res) => {
     const hashedPassword = hashPassword(account_password, salt);
 
     try {
-        const mysqldb = await DB_connect();
+        const mysqldb = await connect();
         const query = `INSERT INTO account (account_type, account_number, account_balance, user_id, account_password) VALUES (?, ?, ?, ?, ?)`;
         const values = [account_type, account_number, account_balance, user_id, hashedPassword];
 
@@ -113,7 +113,7 @@ router.delete('/delete/:id', async (req, res) => {
     }
 
     try {
-        const mysqldb = await DB_connect();
+        const mysqldb = await connect();
         const query = `DELETE FROM account WHERE id = ? AND user_id = ?`;
         const values = [id, user_id];
 
@@ -138,7 +138,7 @@ router.post('/deposit', async (req, res) => {
     }
 
     try {
-        const mysqldb = await DB_connect();
+        const mysqldb = await connect();
         const query = `UPDATE account SET account_balance = account_balance + ? WHERE id = ? AND user_id = ?`;
         const values = [amount, account_id, user_id];
 
@@ -163,7 +163,7 @@ router.post('/withdraw', async (req, res) => {
     }
 
     try {
-        const mysqldb = await DB_connect();
+        const mysqldb = await connect();
         const query = `UPDATE account SET account_balance = account_balance - ? WHERE id = ? AND user_id = ?`;
         const values = [amount, account_id, user_id];
 
