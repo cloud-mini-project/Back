@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const connect = require('../db');
+const { connect_promise } = require('../db');
 const crypto = require('crypto');
 
 // 계좌 번호와 비밀번호 암호화 함수
@@ -21,7 +21,7 @@ router.get('/user', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
+        const mysqldb = await connect_promise();
         const [results] = await mysqldb.execute(`SELECT name FROM user WHERE id = ?`, [user_id]);
         if (results.length > 0) {
             res.json({ name: results[0].name });
@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
+        const mysqldb = await connect_promise();
         const [results] = await mysqldb.execute(`SELECT * FROM account WHERE user_id = ?`, [user_id]);
         res.json({ accounts: results });
     } catch (err) {
@@ -63,7 +63,7 @@ router.post('/create', async (req, res) => {
     const hashedPassword = hashPassword(account_password, salt);
 
     try {
-        const mysqldb = await connect();
+        const mysqldb = await connect_promise();
         const [results] = await mysqldb.execute(`INSERT INTO account (account_type, account_number, account_balance, user_id, account_password) VALUES (?, ?, ?, ?, ?)`, [account_type, account_number, account_balance, user_id, hashedPassword]);
 
         const accountId = results.insertId;
@@ -85,7 +85,7 @@ router.delete('/delete/:id', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
+        const mysqldb = await connect_promise();
 
         await mysqldb.execute(`DELETE FROM account_salt WHERE account_id = ?`, [id]);
         await mysqldb.execute(`DELETE FROM account WHERE id = ? AND user_id = ?`, [id, user_id]);
@@ -105,7 +105,7 @@ router.post('/deposit', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
+        const mysqldb = await connect_promise();
         await mysqldb.execute(`UPDATE account SET account_balance = account_balance + ? WHERE id = ? AND user_id = ?`, [amount, account_id, user_id]);
 
 
@@ -124,7 +124,7 @@ router.post('/withdraw', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
+        const mysqldb = await connect_promise();
         await mysqldb.execute(`UPDATE account SET account_balance = account_balance - ? WHERE id = ? AND user_id = ?`, [amount, account_id, user_id]);
 
 
@@ -145,7 +145,7 @@ router.post('/transfer', async (req, res) => {
     let mysqldb;
 
     try {
-        mysqldb = await connect();
+        mysqldb = await connect_promise();
         await mysqldb.beginTransaction();
 
         const [senderRows] = await mysqldb.execute(`SELECT account_balance FROM account WHERE id = ? AND user_id = ?`, [sender_account_id, user_id]);

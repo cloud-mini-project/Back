@@ -1,4 +1,4 @@
-const connect = require('../db');
+const { connect_callback } = require('../db');
 
 const express = require('express');
 const router = express.Router();
@@ -81,7 +81,7 @@ router.get('/', async (req, res) => {
 
     try {
 
-        const db = await connect();
+        const db = await connect_callback();
         //console.log('DB Object : ', db );
         const sqlSelectQna = `SELECT title, created, status FROM question ORDER BY question.created DESC`;
         db.execute(sqlSelectQna, (err, result, fields) => {
@@ -115,7 +115,7 @@ router.post('/save', setUpFolder, upload.fields([
 
     try {
 
-        const { db } = await connect();
+        const { db } = await connect_callback();
 
         // 1 : req.body.userId => question.user_id
         const values = [userId, title, content, req.folder, req.folder, new Date()];
@@ -158,7 +158,7 @@ router.get('/content/:id', async (req, res) => {
         const qid = req.params.id
         console.log(qid);
 
-        const db = await connect();
+        const db = await connect_callback();
 
         //userId : 세션 활용?
         const sqlSelectQcontent = `SELECT * FROM question, user WHERE question.user_id = user.id AND question.id = ?`;
@@ -207,7 +207,7 @@ router.post('/update/:id', async (req, res) => {
         const userId = req.body.userId;
         const { title, content, created, file, img } = req.body;
 
-        const { db } = await connect();
+        const { db } = await connect_callback();
 
         // (1) 질문 글 존재 여부 확인
         const sqlQSelect = `SELECT id, user_id FROM question WHERE id = ?`
@@ -271,7 +271,7 @@ router.post('/delete', async (req, res) => {
 
     try {
         userId = req.body.userId;
-        const { db } = await connect();
+        const { db } = await connect_callback();
 
         // 삭제자 = 작성자 확인
         const sqlQSelect = `SELECT id, user_id FROM question WHERE id = ?`

@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const DB_connect = require('../db');
+const DB_connect = require('../db');
 const sha = require('sha256');
 
 router.get('/register', async (req, res) => {
