@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const connect = require('../db');
+const connect = require('../DB');
 const crypto = require('crypto');
 
 // 계좌 번호와 비밀번호 암호화 함수

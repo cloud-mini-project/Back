@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const path = require('path');
-const connect = require('../db');
+const connect = require('../DB');
 const sha256 = require('sha256');
 
 router.post('/register/save', async (req, res) => {
