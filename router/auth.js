@@ -11,11 +11,12 @@ router.post('/register/save', async (req, res) => {
     const { email, name, password, role, phone_num, address } = req.body;
     const salt = 'your_secret_salt';
     const crypto_password = sha256(password + salt);
+    const role_default = `user`;
 
     try {
         const db = await connect();
         const query = `INSERT INTO user (email, name, password, role, phone_num, address) VALUES (?, ?, ?, ?, ?, ?)`;
-        const values = [email, name, crypto_password, role, phone_num, address];
+        const values = [email, name, crypto_password, role_default, phone_num, address];
 
         db.query(query, values,(err, result) => {
             if (err) {
@@ -32,7 +33,6 @@ router.post('/register/save', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
-
 
 router.post('/login/submit', async (req, res) => {
     const { email, password } = req.body;
@@ -77,7 +77,7 @@ router.post('/login', async (req, res) => {
                 res.json({ success: true, user });
             }
             else {
-                res.json({ success: false, message: '로그인 실패: 잘못된 아이디 또는 비밀번호' });
+                res.json({ success: false, message: '잘못된 아이디 또는 비밀번호' });
             }
         });
     }
