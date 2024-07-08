@@ -14,7 +14,7 @@ const connectToDatabase = async () => {
         host: process.env.DB_HOST,
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
-        database: process.env.DB_DATABASE,
+        database: process.env.DB_NAME,
     });
     console.log(`MySQL connect success`);
     return db
@@ -51,12 +51,13 @@ const setUpFolder = (req, res, next) => {
 const upload = multer({
     storage: multer.diskStorage({
         destination(req, file, done) {
-
+            console.log('req.folder:', req.folder)
             if (!fs.existsSync(req.folder)) {
                 fs.mkdirSync(req.folder);
             }
 
             const folder = `${req.folder}/${file.fieldname}`;
+            console.log('folder:', folder)
             if (!fs.existsSync(folder)) {
                 fs.mkdirSync(folder);
             }
@@ -85,6 +86,8 @@ router.post('/', setUpFolder, upload.fields([
     { name: 'files', maxCount: 5 }]
 ), async (req, res) => {
     const { title, content } = req.body;
+    const user_id = req.session.user.userId; // 세션에서 user_id 가져오기
+
     console.log(title, content);
     try {
 
@@ -105,6 +108,57 @@ router.post('/', setUpFolder, upload.fields([
             status: 'fail',
             message: '서버 에러'
         });
+    }
+});
+
+// 공지사항 수정
+router.put('/:id', async (req, res) => {
+
+    const { id } = req.params;
+    const { title, content } = req.body;
+    console.log(id, title, content);
+
+    try {
+        const db = await connectToDatabase();
+
+        const [results, fields] = await db.query('SELECT id FROM notice WHERE id = ?', [id]);
+        if (results.length === 0) {
+            res.status(404).send({
+                status: 'fail',
+                message: '해당 공지사항이 존재하지 않습니다.'
+            });
+            return;
+        }
+
+        let sql = 'UPDATE notice SET ';
+        let params = [];
+        if (title) {
+            sql += 'title = ?, ';
+            params.push(title);
+        }
+
+        if (content) {
+            sql += 'content = ?, ';
+            params.push(content);
+        }
+
+        sql = sql.slice(0, -2);
+        sql += ' WHERE id = ?';
+        params.push(id);
+
+        await db.execute(sql, params);
+
+
+        res.json({
+            status: 'success',
+            data: null
+        });
+    } catch (error) {
+        console.error('공지사항 수정 에러', error);
+        res.status(500).send({
+            status: "fail",
+            message: 'Internal Server Error'
+        })
     }
 });
 
@@ -129,6 +183,9 @@ router.get(`/`, async (req, res) => {
         })
     }
 });
+
+
+
 
 // 공지사항 상세
 router.get('/:id', async (req, res) => {
@@ -170,75 +227,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// 공지사항 수정
-router.patch('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { title, content } = req.body;
-        const db = await connectToDatabase();
-        // 존재 확인
-        db.query('SELECT id FROM notice WHERE id = ?', [id], (err, rows) => {
-            if (err) {
-                console.error('DB 에러', err);
-                res.status(500).send({
-                    status: "fail",
-                    message: 'Internal Server Error'
-                });
-                return;
-            }
-
-            if (rows.length === 0) {
-                res.status(404).send({
-                    status: "fail",
-                    message: '해당 공지사항이 존재하지 않습니다.'
-                });
-                return;
-            }
-
-            let sql = 'UPDATE notice SET ';
-            let params = [];
-            if (title) {
-                sql += 'title = ?, ';
-                params.push(title);
-            }
-
-            if (content) {
-                sql += 'content = ?, ';
-                params.push(content);
-            }
-
-            sql = sql.slice(0, -2);
-            sql += ' WHERE id = ?';
-            params.push(id);
-
-            db.query(sql, params, (err, result) => {
-                if (err) {
-                    console.error('DB 에러', err);
-                    res.status(500).send({
-                        status: "fail",
-                        message: 'Internal Server Error'
-                    });
-                } else {
-
-                    res.json({
-                        status: 'success',
-                        data: null
-                    });
-                }
-            });
-        });
-
-
-
-
-    } catch (error) {
-        console.error('공지사항 수정 에러', error);
-        res.status(500).send({
-            status: "fail",
-            message: 'Internal Server Error'
-        })
-    }
-});
 
 // 공지사항 삭제
 router.delete('/:id', async (req, res) => {
@@ -246,44 +234,22 @@ router.delete('/:id', async (req, res) => {
         const { id } = req.params;
         const db = await connectToDatabase();
 
-        // 존재 확인
-        db.query('SELECT id FROM notice WHERE id = ?', [id], (err, rows) => {
-            if (err) {
-                console.error('DB 에러', err);
-                res.status(500).send({
-                    status: "fail",
-                    message: 'Internal Server Error'
-                });
-                return;
-            }
-
-            if (rows.length === 0) {
-                res.status(404).send({
-                    status: "fail",
-                    message: '해당 공지사항이 존재하지 않습니다.'
-                });
-                return;
-            }
-
-            db.query('DELETE FROM notice WHERE id = ?', [id], (err, result) => {
-                if (err) {
-                    console.error('DB 에러', err);
-                    res.status(500).send({
-                        status: "fail",
-                        message: 'Internal Server Error'
-                    });
-                    return;
-                }
-
-                res.json({
-                    status: 'success',
-                    data: null
-                });
-
+        const [results, fields] = await db.query('SELECT id FROM notice WHERE id = ?', [id]);
+        if (results.length === 0) {
+            res.status(404).send({
+                status: 'fail',
+                message: '해당 공지사항이 존재하지 않습니다.'
             });
+            return;
+        }
+
+        await db.execute('DELETE FROM notice WHERE id = ?', [id]);
+
+        res.json({
+            status: 'success',
+            message: '공지사항 삭제 성공',
+            data: null
         });
-
-
     } catch (error) {
         console.error('공지사항 삭제 에러', error);
         res.status(500).send({

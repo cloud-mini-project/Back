@@ -14,7 +14,10 @@ function hashPassword(password, salt) {
 
 // 사용자 이름 조회
 router.get('/user', async (req, res) => {
-    const user_id = req.query.user_id;
+    let user_id;
+    if (req.session.user) {
+        user_id = req.session.user.userId;
+    }
     if (!user_id) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -77,7 +80,7 @@ router.post('/create', async (req, res) => {
 // 계좌 삭제
 router.delete('/delete/:id', async (req, res) => {
     const { id } = req.params;
-    const user_id = req.query.user_id;
+    const user_id = req.session.user.userId;
     if (!user_id) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
