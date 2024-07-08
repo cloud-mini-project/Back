@@ -1,12 +1,15 @@
-const mysql = require(`mysql2/promise`);
 require(`dotenv`).config();
 
-let db;
-const connect = async () => {
-    if (db) return db;
+const mysql_promise = require(`mysql2/promise`);
+const mysql_callback = require(`mysql2`);
+
+let db_promise;
+
+const connect_promise = async () => {
+    if (db_promise) return db_promise;
 
     try {
-        db = await mysql.createConnection({
+        db_promise = await mysql_promise.createConnection({
             host: process.env.DB_HOST || 'localhost',
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
@@ -14,7 +17,7 @@ const connect = async () => {
         });
 
         console.log(`MySQL 연결 성공`);
-        return db;
+        return db_promise;
     }
     catch (error) {
         console.error(`연결 오류`, error);
@@ -22,4 +25,28 @@ const connect = async () => {
     }
 };
 
-module.exports = connect;
+let db_callback;
+const connect_callback = () => {
+    if (db_callback) return db_callback;
+
+    db_callback = mysql_callback.createConnection({
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME || 'app',
+    });
+
+    db_callback.connect((error) => {
+        if (error) {
+            console.error(`연결 오류`, error);
+            throw error;
+        }
+        console.log(`MySQL 연결 성공`);
+        return db_callback;
+    });
+};
+
+module.exports = {
+    connect_promise,
+    connect_callback,
+};
