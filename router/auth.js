@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const path = require('path');
 const crypto = require('crypto');
-const { connect_promise } = require('../db');
+const { connect_callback } = require('../db');
 
 const sha256 = require('sha256');
 
@@ -17,7 +17,7 @@ router.post('/register/save', async (req, res) => {
     const role_default = `user`;
 
     try {
-        const db = await connect();
+        const db = await connect_callback();
         const query = `INSERT INTO user (email, name, password, role, phone_num, address) VALUES (?, ?, ?, ?, ?, ?)`;
         const values = [email, name, crypto_password, role_default, phone_num, address];
 
@@ -44,15 +44,21 @@ router.post('/login/submit', async (req, res) => {
     const crypto_password = sha256(password + salt);
 
     try {
-        const db = await connect();
+        const db = await connect_callback();
         const query = 'SELECT * FROM user WHERE email = ? AND password = ?';
-        const [rows] = await db.execute(query, [email, crypto_password]);
+        const values = [email, crypto_password];
 
-        if (rows.length > 0) {
-            res.status(200).json({ success: true });
-        } else {
-            res.status(401).json({ error: 'Invalid email or password' });
-        }
+        db.query(query, values, (err, rows) => {
+            if (err) {
+                console.error('로그인 오류:', err);
+                return res.status(500).json({ success: false, message: '서버 오류' });
+            }
+            if (rows.length > 0) {
+                res.status(200).json({ success: true });
+            } else {
+                res.status(401).json({ error: 'Invalid email or password' });
+            }
+        });
     }
     catch (err) {
         console.error('DB Connect fail', err);
@@ -96,7 +102,7 @@ router.post('/login', async (req, res) => {
     const crypto_password = sha256(password + salt);
 
     try {
-        const db = await connect_promise();
+        const db = await connect_callback();
         const query = `SELECT * FROM user WHERE email = ?`;
         const values = [email];
 
