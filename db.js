@@ -36,14 +36,7 @@ const connect_callback = () => {
         database: process.env.DB_NAME || 'app',
     });
 
-    db_callback.connect((error) => {
-        if (error) {
-            console.error(`연결 오류`, error);
-            throw error;
-        }
-        console.log(`MySQL 연결 성공`);
-        return db_callback;
-    });
+    return db_callback;
 };
 
 module.exports = {
