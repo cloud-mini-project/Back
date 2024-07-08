@@ -37,7 +37,10 @@ router.get('/user', async (req, res) => {
 
 // 계좌 목록 조회
 router.get('/', async (req, res) => {
-    const user_id = req.query.user_id;
+    let user_id;
+    if (req.session.user) {
+        user_id = req.session.user.userId;
+    }
     if (!user_id) {
         console.error('User ID가 제공되지 않았습니다.');
         return res.status(401).json({ error: 'Unauthorized' });
@@ -55,7 +58,16 @@ router.get('/', async (req, res) => {
 
 // 계좌 생성
 router.post('/create', async (req, res) => {
-    const { account_type, account_password, user_id } = req.body;
+    const { account_type, account_password } = req.body;
+
+
+    if (!req.session.user) {
+        console.log('Unauthorized')
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const user_id = req.session.user.userId;
+
     console.log('Received request to create account with:', req.body);
     const account_number = generateAccountNumber();
     const account_balance = 0;
@@ -69,6 +81,7 @@ router.post('/create', async (req, res) => {
         const accountId = results.insertId;
         await mysqldb.execute(`INSERT INTO account_salt (account_id, salt) VALUES (?, ?)`, [accountId, salt]);
 
+        console.log('계좌 생성 완료:', accountId)
         res.json({ success: true });
     } catch (err) {
         console.error('계좌 생성 오류:', err);
@@ -99,7 +112,11 @@ router.delete('/delete/:id', async (req, res) => {
 
 // 입금
 router.post('/deposit', async (req, res) => {
-    const { account_id, amount, user_id } = req.body;
+    const { account_id, amount } = req.body;
+    let user_id;
+    if (req.session.user) {
+        user_id = req.session.user.userId;
+    }
     if (!user_id) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -118,7 +135,13 @@ router.post('/deposit', async (req, res) => {
 
 // 출금
 router.post('/withdraw', async (req, res) => {
-    const { account_id, amount, user_id } = req.body;
+    const { account_id, amount } = req.body;
+    console.log('Withdraw request:', req.body);
+    let user_id;
+    if (req.session.user) {
+        user_id = req.session.user.userId;
+    }
+
     if (!user_id) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -137,7 +160,13 @@ router.post('/withdraw', async (req, res) => {
 
 // 송금
 router.post('/transfer', async (req, res) => {
-    const { sender_account_id, recipient_account_number, amount, user_id } = req.body;
+    const { sender_account_id, recipient_account, amount } = req.body;
+    console.log('Transfer request:', req.body);
+    let user_id;
+    if (req.session.user) {
+        user_id = req.session.user.userId;
+    }
+
     if (!user_id) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -162,7 +191,7 @@ router.post('/transfer', async (req, res) => {
         }
 
         await mysqldb.execute(`UPDATE account SET account_balance = account_balance - ? WHERE id = ? AND user_id = ?`, [amount, sender_account_id, user_id]);
-        await mysqldb.execute(`UPDATE account SET account_balance = account_balance + ? WHERE account_number = ?`, [amount, recipient_account_number]);
+        await mysqldb.execute(`UPDATE account SET account_balance = account_balance + ? WHERE account_number = ?`, [amount, recipient_account]);
 
         await mysqldb.commit();
         res.json({ success: true });

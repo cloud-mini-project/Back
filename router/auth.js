@@ -18,7 +18,7 @@ router.post('/register/save', async (req, res) => {
 
     try {
         const db = await connect_callback();
-        const query = `INSERT INTO user (email, name, password, role, phone_num, address) VALUES (?, ?, ?, ?, ?, ?)`;
+        const query = `INSERT INTO user (email, name, password, role, phone_number, address) VALUES (?, ?, ?, ?, ?, ?)`;
         const values = [email, name, crypto_password, role_default, phone_num, address];
 
         db.query(query, values, (err, result) => {
@@ -117,7 +117,7 @@ router.post('/login', async (req, res) => {
                 if (user.password = sha256(password + salt) === crypto_password) {
                     console.log(req.session);
                     req.session.user = {
-                        userid: user.id,
+                        userId: user.id,
                         email: user.email,
                         name: user.name,
                         role: user.role
@@ -128,7 +128,10 @@ router.post('/login', async (req, res) => {
                             return res.status(500).json({ success: false, message: '서버 오류' });
                         }
                         console.log('세션 저장 후:', req.session.user);
-                        res.status(200).json({ success: true, user: req.session.user });
+                        res.status(200).json({
+                            success: true,
+                            user: req.session.user,
+                        });
                     });
                 } else {
                     res.status(401).json({ success: false, message: '잘못된 아이디 또는 비밀번호' });
