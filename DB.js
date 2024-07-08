@@ -2,8 +2,9 @@ const mysql = require(`mysql2`);
 require(`dotenv`).config();
 
 let db;
+
 const connect = async () => {
-    if (db) return db;
+    if (db) return  db  ;
 
     try {
         db = mysql.createConnection({
@@ -20,8 +21,10 @@ const connect = async () => {
                 throw err;
             }
             console.log(`MySQL 연결 성공`);
-        });
-        return db;
+            });
+        return  db ;
+        
+           
     }
     catch (error) {
         console.error(`연결 오류`, error);
