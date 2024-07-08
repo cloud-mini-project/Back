@@ -27,10 +27,12 @@ app.set('view engine', 'ejs');
 const accountRouter = require('./router/account');
 const authRouter = require('./router/auth');
 const noticeRouter = require('./router/notice');
+const qnaRouter = require('./router/qna');
 
 app.use('/api/account', accountRouter);
 app.use('/api/notice', noticeRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/qna', qnaRouter);
 
 const HOST = process.env.SERVER_HOST || '127.0.0.1';
 const PORT = process.env.SERVER_PORT || 8080;

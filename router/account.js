@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const connect = require('../db');
+
+const { connect_promise } = require('../db');
 const crypto = require('crypto');
 
 // 계좌 번호와 비밀번호 암호화 함수
@@ -20,26 +21,20 @@ router.get('/user', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
-        const query = `SELECT name FROM user WHERE id = ?`;
-        const values = [user_id];
+        const mysqldb = await connect_promise();
+        const [results] = await mysqldb.execute(`SELECT name FROM user WHERE id = ?`, [user_id]);
+        if (results.length > 0) {
+            res.json({ name: results[0].name });
+        } else {
+            res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+        }
 
-        mysqldb.query(query, values, (err, results) => {
-            if (err) {
-                console.error('사용자 조회 오류:', err);
-                return res.status(500).json({ error: '사용자 조회에 실패했습니다.' });
-            }
-            if (results.length > 0) {
-                res.json({ name: results[0].name });
-            } else {
-                res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
-            }
-        });
     } catch (err) {
         console.error('DB 접속 실패:', err);
         res.status(500).json({ error: '서버 오류' });
     }
 });
+
 // 계좌 목록 조회
 router.get('/', async (req, res) => {
     const user_id = req.query.user_id;
@@ -49,17 +44,9 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
-        const query = `SELECT * FROM account WHERE user_id = ?`;
-        const values = [user_id];
-
-        mysqldb.query(query, values, (err, results) => {
-            if (err) {
-                console.error('계좌 조회 오류:', err);
-                return res.status(500).json({ error: '계좌 조회에 실패했습니다.' });
-            }
-            res.json({ accounts: results });
-        });
+        const mysqldb = await connect_promise();
+        const [results] = await mysqldb.execute(`SELECT * FROM account WHERE user_id = ?`, [user_id]);
+        res.json({ accounts: results });
     } catch (err) {
         console.error('DB 접속 실패:', err);
         res.status(500).json({ error: '서버 오류' });
@@ -76,31 +63,16 @@ router.post('/create', async (req, res) => {
     const hashedPassword = hashPassword(account_password, salt);
 
     try {
-        const mysqldb = await connect();
-        const query = `INSERT INTO account (account_type, account_number, account_balance, user_id, account_password) VALUES (?, ?, ?, ?, ?)`;
-        const values = [account_type, account_number, account_balance, user_id, hashedPassword];
+        const mysqldb = await connect_promise();
+        const [results] = await mysqldb.execute(`INSERT INTO account (account_type, account_number, account_balance, user_id, account_password) VALUES (?, ?, ?, ?, ?)`, [account_type, account_number, account_balance, user_id, hashedPassword]);
 
-        mysqldb.query(query, values, (err, results) => {
-            if (err) {
-                console.error('계좌 생성 오류:', err);
-                return res.status(500).json({ error: '계좌 생성에 실패했습니다.' });
-            }
+        const accountId = results.insertId;
+        await mysqldb.execute(`INSERT INTO account_salt (account_id, salt) VALUES (?, ?)`, [accountId, salt]);
 
-            const accountId = results.insertId;
-            const saltQuery = `INSERT INTO account_salt (account_id, salt) VALUES (?, ?)`;
-            const saltValues = [accountId, salt];
-
-            mysqldb.query(saltQuery, saltValues, (err, results) => {
-                if (err) {
-                    console.error('솔트 저장 오류:', err);
-                    return res.status(500).json({ error: '솔트 저장에 실패했습니다.' });
-                }
-                res.json({ success: true });
-            });
-        });
+        res.json({ success: true });
     } catch (err) {
-        console.error('DB 접속 실패:', err);
-        res.status(500).json({ error: '서버 오류' });
+        console.error('계좌 생성 오류:', err);
+        res.status(500).json({ error: '계좌 생성에 실패했습니다.' });
     }
 });
 
@@ -113,20 +85,15 @@ router.delete('/delete/:id', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
-        const query = `DELETE FROM account WHERE id = ? AND user_id = ?`;
-        const values = [id, user_id];
+        const mysqldb = await connect_promise();
 
-        mysqldb.query(query, values, (err, results) => {
-            if (err) {
-                console.error('계좌 삭제 오류:', err);
-                return res.status(500).json({ error: '계좌 삭제에 실패했습니다.' });
-            }
-            res.json({ success: true });
-        });
+        await mysqldb.execute(`DELETE FROM account_salt WHERE account_id = ?`, [id]);
+        await mysqldb.execute(`DELETE FROM account WHERE id = ? AND user_id = ?`, [id, user_id]);
+
+        res.json({ success: true });
     } catch (err) {
-        console.error('DB 접속 실패:', err);
-        res.status(500).json({ error: '서버 오류' });
+        console.error('계좌 삭제 오류:', err);
+        res.status(500).json({ error: '계좌 삭제에 실패했습니다.' });
     }
 });
 
@@ -138,20 +105,14 @@ router.post('/deposit', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
-        const query = `UPDATE account SET account_balance = account_balance + ? WHERE id = ? AND user_id = ?`;
-        const values = [amount, account_id, user_id];
+        const mysqldb = await connect_promise();
+        await mysqldb.execute(`UPDATE account SET account_balance = account_balance + ? WHERE id = ? AND user_id = ?`, [amount, account_id, user_id]);
 
-        mysqldb.query(query, values, (err, results) => {
-            if (err) {
-                console.error('입금 오류:', err);
-                return res.status(500).json({ error: '입금에 실패했습니다.' });
-            }
-            res.json({ success: true });
-        });
+
+        res.json({ success: true });
     } catch (err) {
-        console.error('DB 접속 실패:', err);
-        res.status(500).json({ error: '서버 오류' });
+        console.error('입금 오류:', err);
+        res.status(500).json({ error: '입금에 실패했습니다.' });
     }
 });
 
@@ -163,20 +124,52 @@ router.post('/withdraw', async (req, res) => {
     }
 
     try {
-        const mysqldb = await connect();
-        const query = `UPDATE account SET account_balance = account_balance - ? WHERE id = ? AND user_id = ?`;
-        const values = [amount, account_id, user_id];
+        const mysqldb = await connect_promise();
+        await mysqldb.execute(`UPDATE account SET account_balance = account_balance - ? WHERE id = ? AND user_id = ?`, [amount, account_id, user_id]);
 
-        mysqldb.query(query, values, (err, results) => {
-            if (err) {
-                console.error('출금 오류:', err);
-                return res.status(500).json({ error: '출금에 실패했습니다.' });
-            }
-            res.json({ success: true });
-        });
+
+        res.json({ success: true });
     } catch (err) {
-        console.error('DB 접속 실패:', err);
-        res.status(500).json({ error: '서버 오류' });
+        console.error('출금 오류:', err);
+        res.status(500).json({ error: '출금에 실패했습니다.' });
+    }
+});
+
+// 송금
+router.post('/transfer', async (req, res) => {
+    const { sender_account_id, recipient_account_number, amount, user_id } = req.body;
+    if (!user_id) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    let mysqldb;
+
+    try {
+        mysqldb = await connect_promise();
+        await mysqldb.beginTransaction();
+
+        const [senderRows] = await mysqldb.execute(`SELECT account_balance FROM account WHERE id = ? AND user_id = ?`, [sender_account_id, user_id]);
+
+        if (senderRows.length === 0) {
+            await mysqldb.rollback();
+            return res.status(404).json({ error: '송신자 계좌를 찾을 수 없습니다.' });
+        }
+
+        const senderBalance = senderRows[0].account_balance;
+        if (senderBalance < amount) {
+            await mysqldb.rollback();
+            return res.status(400).json({ error: '잔액이 부족합니다.' });
+        }
+
+        await mysqldb.execute(`UPDATE account SET account_balance = account_balance - ? WHERE id = ? AND user_id = ?`, [amount, sender_account_id, user_id]);
+        await mysqldb.execute(`UPDATE account SET account_balance = account_balance + ? WHERE account_number = ?`, [amount, recipient_account_number]);
+
+        await mysqldb.commit();
+        res.json({ success: true });
+    } catch (err) {
+        console.error('송금 오류:', err);
+        if (mysqldb) await mysqldb.rollback();
+        res.status(500).json({ error: '송금에 실패했습니다.' });
     }
 });
 
