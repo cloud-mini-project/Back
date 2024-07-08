@@ -23,6 +23,8 @@ app.use(session({
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
+const DB = require(`./db`)
+
 // 라우터 추가
 const accountRouter = require('./router/account');
 const authRouter = require('./router/auth');
@@ -38,5 +40,6 @@ const HOST = process.env.SERVER_HOST || '127.0.0.1';
 const PORT = process.env.SERVER_PORT || 8080;
 
 app.listen(PORT, () => {
+    DB();
     console.log(`Server running at http://${HOST}:${PORT}`);
 });
