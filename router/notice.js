@@ -86,7 +86,13 @@ router.post('/', setUpFolder, upload.fields([
     { name: 'files', maxCount: 5 }]
 ), async (req, res) => {
     const { title, content } = req.body;
-    console.log(title, content);
+    //console.log(title, content);
+    const user_id = req.session.user.userid; // session 에서 userid 가져오기
+
+    if (!user_id) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     try {
 
         const db = await connectToDatabase();

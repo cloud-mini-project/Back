@@ -29,6 +29,7 @@ const authRouter = require('./router/auth');
 const noticeRouter = require('./router/notice');
 const qnaRouter = require('./router/qna');
 
+// 라우터 사용
 app.use('/api/account', accountRouter);
 app.use('/api/notice', noticeRouter);
 app.use('/api/auth', authRouter);
