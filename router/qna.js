@@ -109,19 +109,21 @@ router.post('/save', setUpFolder, upload.fields([
     { name: 'files', maxCount: 5 }]
 ), async (req, res) => {
     const { title, content } = req.body;
-    console.log(titile, content);
+    const user_id = req.session.user.userId; //////// 현석 수정 : 세션에서 user_id 가져오기
 
-    // (추가 작성 필요) 로그인 여부 확인 //
-
+    if (!user_id) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }////// 여기까지
     try {
+        console.log(title, content);
 
-        const { db } = await connect_callback();
+        const db = await connect_callback();       /////// 여기도 {} 생략
 
         // 1 : req.body.userId => question.user_id
-        const values = [userId, title, content, req.folder, req.folder, new Date()];
+        const values = [user_id, title, content, req.folder, req.folder, new Date()];
         console.log(values);
         const sqlQInsert = `INSERT INTO question (user_id, title, content, file, img, created, status) VALUES (?, ?, ?, ?, ?, ?, 0)`;
-        db.execute(sqlQInsert, values, (err, result) => {
+        db.query(sqlQInsert, values, (err, result) => { ////// 그리고 execute -> query로 수정 그리고 user_id 로 변경
             if (err) {
                 console.log('QnA 작성 오류 : ', err);
                 res.status(500).send({
