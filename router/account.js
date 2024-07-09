@@ -136,7 +136,6 @@ router.post('/deposit', async (req, res) => {
     }
 });
 
-// 출금
 router.post('/withdraw', async (req, res) => {
     const { account_id, amount } = req.body;
     console.log('Withdraw request:', req.body);
@@ -151,8 +150,21 @@ router.post('/withdraw', async (req, res) => {
 
     try {
         const mysqldb = await connect_promise();
-        await mysqldb.execute(`UPDATE account SET account_balance = account_balance - ? WHERE id = ? AND user_id = ?`, [amount, account_id, user_id]);
+        // 현재 계좌 잔액을 확인
+        const [rows] = await mysqldb.execute("SELECT account_balance FROM account WHERE id = ? AND user_id = ?", [account_id, user_id]);
 
+        if (rows.length === 0) {
+            return res.status(404).json({ error: '계좌를 찾을 수 없습니다.' });
+        }
+
+        const current_balance = rows[0].account_balance;
+
+        if (current_balance < amount) {
+            return res.status(400).json({ error: '잔액이 부족합니다.' });
+        }
+
+        // 잔액이 충분할 경우 출금 처리
+        await mysqldb.execute("UPDATE account SET account_balance = account_balance - ? WHERE id = ? AND user_id = ?", [amount, account_id, user_id]);
 
         res.json({ success: true });
     } catch (err) {
