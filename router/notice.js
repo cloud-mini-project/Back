@@ -86,7 +86,6 @@ router.post('/', setUpFolder, upload.fields([
     { name: 'files', maxCount: 5 }]
 ), async (req, res) => {
     const { title, content } = req.body;
-    const user_id = req.session.user.userId; // 세션에서 user_id 가져오기
 
     console.log(title, content);
     try {
