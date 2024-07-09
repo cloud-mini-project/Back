@@ -29,5 +29,5 @@ jobs:
             sudo docker rm techit-server ;
             sudo docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGENAME }}
-            sudo docker run --name=techit-server -d -p 8080:8080 --restart=always --network techit-network -e DB_HOST=techit-mysql -e DB_USER=root -e DB_PASSWORD=${{ sercrets.DB_PASSWORD }} -e DB_NAME=app ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGENAME }}
+            sudo docker run --name=techit-server -d -p 8080:8080 --restart=always --network techit-network -e DB_HOST=techit-mysql -e DB_USER=root -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} -e DB_NAME=app ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGENAME }}
             sudo docker image prune -f
