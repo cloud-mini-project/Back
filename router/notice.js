@@ -91,7 +91,7 @@ router.post('/', setUpFolder, upload.fields([
 
         const db = await connectToDatabase();
 
-        const params = [0, title, content, req.folder, req.folder, new Date()];
+        const params = [1, title, content, req.folder, req.folder, new Date()];
         console.log(params);
         await db.execute('INSERT INTO notice (user_id, title, content, file, img, created) VALUES (?, ?, ?, ?, ?, ?)', params);
 
