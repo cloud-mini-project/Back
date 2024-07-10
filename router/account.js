@@ -92,7 +92,7 @@ router.post('/create', async (req, res) => {
 // 계좌 삭제
 router.delete('/delete/:id', async (req, res) => {
     const { id } = req.params;
-    const user_id = req.query.user_id;
+    const user_id = req.session.user.userId;
     if (!user_id) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
